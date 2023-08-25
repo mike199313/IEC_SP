@@ -10,7 +10,7 @@
 #include <sdbusplus/message/types.hpp>
 #include <sys/ioctl.h>
 #include <mtd/mtd-user.h>
-
+#include <array>
 
 constexpr auto SYSTEMD_SERVICE = "org.freedesktop.systemd1";
 constexpr auto SYSTEMD_ROOT = "/org/freedesktop/systemd1";
@@ -20,6 +20,10 @@ constexpr auto MONITOR_PROGRESS_SERVICE = "monitor-bios-update@";
 
 constexpr auto MTD_NUM_MAX = 15;
 constexpr auto FLASHCP_CNT = 50000;
+constexpr auto OP_PAUSE = 1; // unit: sec
+constexpr auto EDAF_MODE = true; // superion-ast enable EDAF(SAFS) mode
+
+const std::array <std::string,SPI_PIN_COUNT> spiLineName = {"SPI_BIOS_MUXA_SEL" , "SPI_BIOS_MUXB_SEL"};
 
 int8_t BiosUpdateManager::setBiosMtdDevice(uint8_t state)
 {
@@ -56,34 +60,42 @@ int8_t BiosUpdateManager::setBiosMtdDevice(uint8_t state)
 
 int8_t BiosUpdateManager::biosUpdatePrepare()
 {
-    int ret = 0;
-    unsigned int gpioPin = 0;
-    char * chipName = new char [CHIP_BUFFER_SIZE];
-    ret = gpiod_ctxless_find_line(spiLineName, chipName, CHIP_BUFFER_SIZE, &gpioPin);
-    if (ret < 0) {
-        std::cerr << "Can't find line:" << spiLineName << "\n";
-        return ret;
-    }else{
-        std::cerr << spiLineName << " is found at " << gpioPin << " in " << chipName << "\n";
-    }
-    // Set BIOS SPI MUX path to BMC (H) 
-    gpiod_ctxless_set_value(chipName,          // Label of the gpiochip.
-                            gpioPin,		    //  Number of GPIO pin.
-                            1,                    // GPIO set value.
-                            false,                // The active state of this line - true if low.
-                            "bios-update",       // Name of comsumer.
-                            NULL,                 // Callback function.
-                            NULL);                // value passed to callback function.
-    sleep(1);
-    delete [] chipName;
-
-    ret = setBiosMtdDevice(bind);
-    if (ret < 0)
+    int i,ret = 0;
+    
+    if(!EDAF_MODE) // It is not neccessary in EDAF mode: 1.switch SPI mux 2.mount SPI driver
     {
-        std::cerr << "Failed in bind mtd partition\n";
-        return -1;
+        unsigned int gpioPin = 0;
+        char * chipName = new char [CHIP_BUFFER_SIZE];
+        // spi Mux
+        for(i=0 ; i<spiLineName.size() ; i++)
+        {
+            ret = gpiod_ctxless_find_line(spiLineName[i].c_str(), chipName, CHIP_BUFFER_SIZE, &gpioPin);
+            if (ret < 0) {
+                std::cerr << "Can't find line:" << spiLineName[i] << "\n";
+                return ret;
+            }else{
+                std::cerr << spiLineName[i] << "is found at " << gpioPin << " in " << chipName << "\n";
+            }
+            // Set BIOS SPI MUX path to BMC (H) 
+            gpiod_ctxless_set_value(chipName,             // Label of the gpiochip.
+                                    gpioPin,	      // Number of GPIO pin.
+                                    1,                    // GPIO set value.
+                                    false,                // The active state of this line - true if low.
+                                    "bios-update",        // Name of comsumer.
+                                    NULL,                 // Callback function.
+                                    NULL);                // value passed to callback function.
+            sleep(OP_PAUSE);
+        }
+        delete [] chipName;
+     
+        ret = setBiosMtdDevice(bind);
+        if (ret < 0)
+        {
+            std::cerr << "Failed in bind mtd partition\n";
+            return -1;
+        }
+        sleep(OP_PAUSE);
     }
-    sleep(1);
     return 0;
 }
 /*the function start report-update-progress service , only can invoke while object is found*/
@@ -178,8 +190,8 @@ int8_t BiosUpdateManager::biosUpdate(const char* image_str)
     while (fgets(buf, sizeof(buf), pp)) {  
         if (cnt++ <= FLASHCP_CNT) {
             cnt = 0;
-	    //printf("%s", buf); 
-	        printf("flashcp is running...\n"); 
+	    printf("%s", buf); 
+	        printf("\nflashcp is running...\n"); 
 	    } 
     } 
     
@@ -196,37 +208,42 @@ int8_t BiosUpdateManager::biosUpdate(const char* image_str)
 
 int8_t BiosUpdateManager::biosUpdateFinished(const char* image_str)
 {
-    int ret = 0;
-
-    sleep(1);
-
-    ret = setBiosMtdDevice(unbind);
-    if (ret < 0)
+    int i,ret = 0;
+ 
+    sleep(OP_PAUSE);
+    if(!EDAF_MODE) //if EDAF mode is not enable, switch SPI mux back to CPU
     {
-        std::cerr << "Failed in unbind mtd partition\n";
-        return -1;
+        ret = setBiosMtdDevice(unbind);
+        if (ret < 0)
+        {
+            std::cerr << "Failed in unbind mtd partition\n";
+            return -1;
+        }
+        sleep(OP_PAUSE);
+        
+        // SPI MUX A
+        unsigned int gpioPin = 0;
+        char * chipName = new char [CHIP_BUFFER_SIZE];
+        for(i=0 ; i<spiLineName.size() ; i++)
+        {
+            ret = gpiod_ctxless_find_line(spiLineName[i].c_str(), chipName, CHIP_BUFFER_SIZE, &gpioPin);
+            if (ret < 0) {
+                std::cerr << "Can't find line:" << spiLineName[i] << "\n";
+                return ret;
+            }else{
+                std::cerr << spiLineName[i] << " is found at " << gpioPin << " in " << chipName << "\n";
+            }
+            // Set BIOS SPI MUX path to Host (L)
+            gpiod_ctxless_set_value(chipName,          // Label of the gpiochip.
+                                    gpioPin,     // Number of GPIO pin.
+                                    0,                    // GPIO set value.
+                                    false,                // The active state of this line - true if low.
+                                    "bios-update",       // Name of comsumer.
+                                    NULL,                 // Callback function.
+                                    NULL);                // value passed to callback function.
+            sleep(OP_PAUSE);
+        }
+        delete [] chipName;
     }
-    sleep(1);
-    
-    unsigned int gpioPin = 0;
-    char * chipName = new char [CHIP_BUFFER_SIZE];
-    ret = gpiod_ctxless_find_line(spiLineName, chipName, CHIP_BUFFER_SIZE, &gpioPin);
-    if (ret < 0) {
-        std::cerr << "Can't find line:" << spiLineName << "\n";
-        return ret;
-    }else{
-        std::cerr << spiLineName << " is found at " << gpioPin << " in " << chipName << "\n";
-    }
-    // Set BIOS SPI MUX path to Host (L)
-    gpiod_ctxless_set_value(chipName,          // Label of the gpiochip.
-                            gpioPin,     // Number of GPIO pin.
-                            0,                    // GPIO set value.
-                            false,                // The active state of this line - true if low.
-                            "bios-update",       // Name of comsumer.
-                            NULL,                 // Callback function.
-                            NULL);                // value passed to callback function.
-    sleep(1);
-    delete [] chipName;
-
-    return 0;
+        return 0;
 }

@@ -4,12 +4,13 @@
 #include <vector>
 #include <xyz/openbmc_project/State/Host/server.hpp>
 
-#define BIOS_SPI "1e630000.spi"
-#define BIOS_DRIVER_PATH "/sys/bus/platform/drivers/aspeed-smc/"
-constexpr uint32_t biosFileSize = (16*1024*1024); // 64M ; platform dependent
+constexpr auto BIOS_SPI = "1e630000.spi";
+constexpr auto BIOS_DRIVER_PATH = "/sys/bus/platform/drivers/ASPEED_FMC_SPI/";
+constexpr auto SPI_PIN_COUNT = 2;
+constexpr uint32_t biosFileSize = (64*1024*1024); // 64M ; platform dependent
 const uint32_t CHIP_BUFFER_SIZE = 32;
-constexpr const char* spiLineName = "SPI_MUX_SELECT";
 constexpr auto BIOS_MTD_NAME = "bios";
+
 //#define DEBUG
 
 #ifdef DEBUG

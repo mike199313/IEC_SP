@@ -26,6 +26,8 @@ OBMC_IMAGE_EXTRA_INSTALL:append = " pfr-manager"
 OBMC_IMAGE_EXTRA_INSTALL:append = " intel-asd"
 OBMC_IMAGE_EXTRA_INSTALL:append = " post-complete"
 OBMC_IMAGE_EXTRA_INSTALL:append = " smbios-mdr smbios-mdr-reload"
+OBMC_IMAGE_EXTRA_INSTALL:append = " bios-update"
+OBMC_IMAGE_EXTRA_INSTALL:append = " monitor-bios-update"
 
 # The offset of RWFS is smaller than ROFS, so creates do_generate_static task
 # to overwrite the default setting which is from image_types_phosphor.bbclass

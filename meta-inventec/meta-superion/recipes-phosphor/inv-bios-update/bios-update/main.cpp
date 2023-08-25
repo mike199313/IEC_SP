@@ -9,8 +9,6 @@
 #include <fcntl.h>
 #include <algorithm>
 
-#include "configure-firmware-update.hpp"
-
 using GetSubTreeType = std::vector<std::pair<
                        std::string,
                        std::vector<std::pair<std::string, std::vector<std::string>>>>>;
@@ -64,25 +62,6 @@ int main(int argc, char **argv) {
         BIOS_UPDATE_DEBUG("object:%s service:%s \n", object.c_str(), service.c_str());
     }
 
-    //If status is FW_UPDATE_IN_PROGRESS, its means startup from oem cmd.
-    //But there may be one situation, this situation happen before this if-statement.
-    //Oem cmd start bios-update, but abort bios-update immediately. The status may be changed from UPDATE_IN_PROGRESS to UPDATE_ABORTED.
-    //When bios-update start and arrive to this if-statement, status=UPDATE_ABORTED.
-    //At this situation, both are from oem, is_oemcmd=true.
-    //In UPDATE_ABORTED, we can return earlier to avoid unnecessary process below.
-    //As a result, avoid nested if-statement, sperate if-statement of FW_UPDATE_ABORTED and FW_UPDATE_IN_PROGRESS.
-    if(std::get<uint8_t>(getProperty("status")) == FW_UPDATE_ABORTED
-            && !std::get<bool>(getProperty("force"))){
-        is_oemcmd = true;
-        setProperty("status", FW_UPDATE_NOT_STARTED);
-        std::cerr << "Configure firmware command: FW_UPDATE_ABORTED\n";
-        return -1;
-    }else if(std::get<uint8_t>(getProperty("status")) == FW_UPDATE_IN_PROGRESS){
-        is_oemcmd = true;
-    }else{/* not oem cmd*/
-        is_oemcmd = false;
-    }
-
     int fd = 0;
     
     if (argc != 2) {
@@ -91,7 +70,7 @@ int main(int argc, char **argv) {
     }
     std::string newFilePath(argv[1]);
     int cnt = 0;	
-    if (is_remote || is_oemcmd) {
+    if (is_remote ) {
 	/*when this utility is invoked as a systmed@.service with argument %i 
         the absolute path need to be converted*/ 
         printf("remote filepath convert! \n");
@@ -108,10 +87,6 @@ int main(int argc, char **argv) {
     if (access(newFilePath.c_str(), F_OK) < 0)
     {
         std::cerr << "Missing BIOS FW file.\n";
-        if(is_oemcmd){
-            setProperty("status", FW_IMAGE_NOT_FOUND);
-            std::cerr << "Configure firmware command: FW_IMAGE_NOT_FOUND\n";
-        }
         return -1;
     }
     uint32_t imageSize = 0;
@@ -120,43 +95,19 @@ int main(int argc, char **argv) {
     if (stat(newFilePath.c_str(), &buf) < 0)
     {
         std::cerr << "Failed to get BIOS FW file info.\n";
-        if(is_oemcmd){
-            setProperty("status", FW_UPDATE_INITIATE_ERROR);
-            std::cerr << "Configure firmware command: FW_UPDATE_INITIATE_ERROR\n";
-        }
         return -1;
     }
 
     if (!S_ISREG(buf.st_mode))
     {
         std::cerr << "Invalid BIOS FW file type.\n";
-        if(is_oemcmd){
-            setProperty("status", FW_UPDATE_INITIATE_ERROR);
-            std::cerr << "Configure firmware command: FW_UPDATE_INITIATE_ERROR\n";
-        }
         return -1;
     }
 
     if (buf.st_size != biosFileSize)
     {
         std::cerr << "Invalid BIOS FW file size.\n";
-        if(is_oemcmd){
-            setProperty("status", FW_UPDATE_INITIATE_ERROR);
-            std::cerr << "Configure firmware command: FW_UPDATE_INITIATE_ERROR\n";
-        }
         return -1;
-    }
-
-    //wait some time for abort
-    if(is_oemcmd && !std::get<bool>(getProperty("force"))){
-        for(int64_t i =0;i < abortResponseTime;i++){
-            sleep(1);
-            if(std::get<uint8_t>(getProperty("status")) == FW_UPDATE_ABORTED){
-                setProperty("status", FW_UPDATE_NOT_STARTED);
-                std::cerr << "Configure firmware command: FW_UPDATE_ABORTED\n";
-                return -1;
-            }
-        }
     }
 
     imageSize = buf.st_size;
@@ -167,10 +118,6 @@ int main(int argc, char **argv) {
     if (ret < 0)
     {
         std::cerr << "Failed in bios update prepare.\n";
-        if(is_oemcmd){
-            setProperty("status", COMPONENT_FAULT_ERROR);
-            std::cerr << "Configure firmware command: COMPONENT_FAULT_ERROR\n";
-        }
         return -1;
     }
     if (is_remote) {
@@ -191,20 +138,12 @@ int main(int argc, char **argv) {
     if (retry >= UPDATE_RETRY) {
         std::cerr << "bios update retry fail\n";
         ret = bios_updater.biosUpdateFinished(newFilePath.c_str());
-        if(is_oemcmd){
-            setProperty("status", COMPONENT_FAULT_ERROR);
-            std::cerr << "Configure firmware command: COMPONENT_FAULT_ERROR\n";
-        }
         return -1;
     }
     ret = bios_updater.biosUpdateFinished(newFilePath.c_str());
     if (ret < 0)
     {
         std::cerr << "Failed in bios update finished.\n";
-        if(is_oemcmd){
-            setProperty("status", COMPONENT_FAULT_ERROR);
-            std::cerr << "Configure firmware command: COMPONENT_FAULT_ERROR\n";
-        }
         return -1;
     }
     if(is_remote) {                
@@ -220,11 +159,6 @@ int main(int argc, char **argv) {
         }
         std::cout << "remote set progress done\n";
         sleep(3);
-    }
-    if(is_oemcmd){
-        setProperty("status", FW_UPDATE_COMPLETED_SUCCESSFULLY);
-        setProperty("force", false);
-        std::cerr << "Configure firmware command: FW_UPDATE_COMPLETED_SUCCESSFULLY\n";
     }
     std::cout << "BIOS FW update finished\n";
     return 0;

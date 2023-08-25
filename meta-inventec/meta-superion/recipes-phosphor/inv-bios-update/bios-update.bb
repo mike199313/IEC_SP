@@ -17,8 +17,6 @@ SRC_URI = "file://Makefile \
            file://main.cpp \
            file://bios-update.hpp \
            file://bios-update.cpp \
-           file://configure-firmware-update.hpp \
-           file://configure-firmware-update.cpp \
            file://COPYING.MIT \
           "
 do_install() {
