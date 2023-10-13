@@ -1,4 +1,134 @@
 [
+    {
+       "Name": "CPU_MCERR",
+       "LineName": "CPU_MCERR",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU_MCERR_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU_MCERR_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU_CATERR",
+       "LineName": "CPU_CATERR",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU_CATERR_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU_CATERR_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU_ERR0",
+       "LineName": "CPU_ERR0",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU_ERR0_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU_ERR0_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU_ERR1",
+       "LineName": "CPU_ERR1",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU_ERR1_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU_ERR1_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU_ERR2",
+       "LineName": "CPU_ERR2",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU_ERR2_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU_ERR2_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU0_MEMHOT",
+       "LineName": "CPU0_MEMHOT",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU0_MEMHOT_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU0_MEMHOT_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU1_MEMHOT",
+       "LineName": "CPU1_MEMHOT",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU1_MEMHOT_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU1_MEMHOT_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU0_THERMTRIP",
+       "LineName": "CPU0_THERMTRIP",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU0_THERMTRIP_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU0_THERMTRIP_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU1_THERMTRIP",
+       "LineName": "CPU1_THERMTRIP",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU1_THERMTRIP_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU1_THERMTRIP_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU0_PWR_GOOD",
+       "LineName": "CPU0_PWR_GOOD",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU0_PWR_GOOD_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU0_PWR_GOOD_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU1_PWR_GOOD",
+       "LineName": "CPU1_PWR_GOOD",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU1_PWR_GOOD_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU1_PWR_GOOD_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU0_MEMHOT_IN",
+       "LineName": "CPU0_MEMHOT_IN",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU0_MEMHOT_IN_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU0_MEMHOT_IN_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU1_MEMHOT_IN",
+       "LineName": "CPU1_MEMHOT_IN",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU1_MEMHOT_IN_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU1_MEMHOT_IN_DEASSERTED.service"]
+       }
+   },
    {
        "Name": "ASSERT_CPU0_PROCHOT",
        "LineName": "ASSERT_CPU0_PROCHOT",
@@ -17,6 +147,26 @@
        "Target": {
            "FALLING":["gpio-event-handler@ASSERT_CPU1_PROCHOT_ASSERTED.service"],
            "RISING": ["gpio-event-handler@ASSERT_CPU1_PROCHOT_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU0_PROCHOT_CPLD",
+       "LineName": "CPU0_PROCHOT_CPLD",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU0_PROCHOT_CPLD_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU0_PROCHOT_CPLD_DEASSERTED.service"]
+       }
+   },
+   {
+       "Name": "CPU1_PROCHOT_CPLD",
+       "LineName": "CPU1_PROCHOT_CPLD",
+       "EventMon": "BOTH",
+       "Continue": true,
+       "Target": {
+           "FALLING":["gpio-event-handler@CPU1_PROCHOT_CPLD_ASSERTED.service"],
+           "RISING": ["gpio-event-handler@CPU1_PROCHOT_CPLD_DEASSERTED.service"]
        }
    }
 ]
