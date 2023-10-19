@@ -18,7 +18,7 @@ constexpr auto SYSTEMD_INTERFACE = "org.freedesktop.systemd1.Manager";
 
 constexpr auto MONITOR_PROGRESS_SERVICE = "monitor-bios-update@";
 
-constexpr auto MTD_NUM_MAX = 15;
+constexpr auto MTD_NUM_MAX = 50;
 constexpr auto FLASHCP_CNT = 50000;
 constexpr auto OP_PAUSE = 1; // unit: sec
 constexpr auto EDAF_MODE = true; // superion-ast enable EDAF(SAFS) mode
