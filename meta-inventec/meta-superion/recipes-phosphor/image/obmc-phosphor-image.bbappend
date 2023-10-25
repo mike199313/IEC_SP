@@ -25,6 +25,7 @@ OBMC_IMAGE_EXTRA_INSTALL:append = " aspeed-app"
 OBMC_IMAGE_EXTRA_INSTALL:append = " pfr-manager"
 OBMC_IMAGE_EXTRA_INSTALL:append = " intel-asd"
 OBMC_IMAGE_EXTRA_INSTALL:append = " post-complete"
+OBMC_IMAGE_EXTRA_INSTALL:append = " smbios-mdr smbios-mdr-reload"
 
 # The offset of RWFS is smaller than ROFS, so creates do_generate_static task
 # to overwrite the default setting which is from image_types_phosphor.bbclass
@@ -90,3 +91,4 @@ python do_generate_static() {
 
 PFR_IMAGE_MODE = "${@bb.utils.contains('MACHINE_FEATURES', 'cerberus-pfr', 'cerberus-pfr-signing-image', 'intel-pfr-signing-image', d)}"
 inherit ${PFR_IMAGE_MODE}
+

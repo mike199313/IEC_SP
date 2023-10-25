@@ -83,6 +83,8 @@ if [ $? == $ERROR_OK ]; then
 
     if [ $? == $ERROR_OK ]; then
         post_complete_rebind
+	systemctl restart smbios-mdrv2.service
+	echo "--- post-complete and restart smbios-mdrv2 service ---"
     else
         echo Second pulse detecting failed, please check the host status.
     fi
