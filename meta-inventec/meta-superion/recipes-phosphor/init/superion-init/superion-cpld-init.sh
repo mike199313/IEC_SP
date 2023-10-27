@@ -1,6 +1,6 @@
 #get cpld mb & scm version
 CPLD_VERSION_PATH="/usr/share/version"
-CPLD_MB_BUS=11
+CPLD_MB_BUS=12
 CPLD_MB_ADDR=0x37
 CPLD_SCM_BUS=9
 CPLD_SCM_ADDR=0x37
