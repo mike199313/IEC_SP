@@ -1,0 +1,13 @@
+{
+    "SCM" : {
+        "bus"    : 7,
+        "addr"   : "0x60",
+        "type"   : "MachXO3"
+    },
+    "MB"  :{
+        "bus"    : 7,
+        "addr"   : "0x40",
+        "type"   : "MachXO3"
+    }
+}
+
