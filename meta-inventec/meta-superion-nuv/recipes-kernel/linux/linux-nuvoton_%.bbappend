@@ -17,6 +17,7 @@ SRC_URI:append:superion-nuv = " \
   file://0011-Add-watchdog-time.patch \
   file://0012-reset-DMA-again-if-stmmac_reset-failed.patch \
   file://0013-Bug-1028-SW-Superion-nuv-kernel-Add-SAPPHIRERAPI.patch \
+  file://0014-Add-rom-mx66l2g45g.patch \
   "
 
 # Merge source tree by original project with our layer of additional files
@@ -27,3 +28,4 @@ do_add_vesnin_files () {
           "${STAGING_KERNEL_DIR}"
 }
 addtask do_add_vesnin_files after do_patch before do_compile
+

@@ -8,10 +8,8 @@ SRC_URI:append:superion-nuv =     " file://fixed_phy.cfg \
                                     file://0003-Bug-631-SW-Superion-nuv-OpenBMC-Support-mc-selft.patch \
                                     file://0004-Add-Windbond-W25Q512JVFIM.patch \
                                     file://0005-Add-update-mac-address-info.patch \
+                                    file://0006-Add-rom-mx66l2g45g.patch \
                                     "
-
-
-
 include conf/machine/platform_configs.inc
 
 EEPROM_MAC_I2C_BUS = "8"
