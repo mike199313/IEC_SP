@@ -1,0 +1,41 @@
+From 85352e366917e2cc6a5d23b6dd10660402ccb573 Mon Sep 17 00:00:00 2001
+From: "jimmy.chen" <Chen.JimmyHC@inventec.com>
+Date: Wed, 8 Nov 2023 03:48:28 +0000
+Subject: [PATCH] Patch for support SPI ROM mx66l2g45g
+
+---
+ drivers/mtd/spi-nor/macronix.c | 4 ++++
+ drivers/mtd/spi-nor/spi-nor.c  | 2 ++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/drivers/mtd/spi-nor/macronix.c b/drivers/mtd/spi-nor/macronix.c
+index 662b212787d4..f99b5caa62d6 100644
+--- a/drivers/mtd/spi-nor/macronix.c
++++ b/drivers/mtd/spi-nor/macronix.c
+@@ -87,6 +87,10 @@ static const struct flash_info macronix_parts[] = {
+ 	{ "mx66u2g45g",	 INFO(0xc2253c, 0, 64 * 1024, 4096,
+ 			      SECT_4K | SPI_NOR_DUAL_READ |
+ 			      SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES) },
++	{ "mx66l2g45g",  INFO(0xc2201c, 0, 64 * 1024, 4096,
++		  	      SECT_4K | SPI_NOR_DUAL_READ |
++			      SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES) },
++
+ };
+ 
+ static void macronix_default_init(struct spi_nor *nor)
+diff --git a/drivers/mtd/spi-nor/spi-nor.c b/drivers/mtd/spi-nor/spi-nor.c
+index 461dbdc1f28d..47d32e52ce4f 100644
+--- a/drivers/mtd/spi-nor/spi-nor.c
++++ b/drivers/mtd/spi-nor/spi-nor.c
+@@ -2303,6 +2303,8 @@ static const struct flash_info spi_nor_ids[] = {
+ 	{ "mx66u51235f", INFO(0xc2253a, 0, 64 * 1024, 1024, SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES) },
+ 	{ "mx66l1g45g",  INFO(0xc2201b, 0, 64 * 1024, 2048, SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
+ 	{ "mx66l1g55g",  INFO(0xc2261b, 0, 64 * 1024, 2048, SPI_NOR_QUAD_READ) },
++	{ "mx66l2g45g",  INFO(0xc2201c, 0, 64 * 1024, 4096, SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES) },
++
+ 
+ 	/* Micron <--> ST Micro */
+ 	{ "n25q016a",	 INFO(0x20bb15, 0, 64 * 1024,   32, SECT_4K | SPI_NOR_QUAD_READ) },
+-- 
+2.17.1
+

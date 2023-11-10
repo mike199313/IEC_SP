@@ -1,0 +1,36 @@
+From a1048f662ef24c8f6ff748635c13569b926fa70d Mon Sep 17 00:00:00 2001
+From: "jimmy.chen" <Chen.JimmyHC@inventec.com>
+Date: Tue, 7 Nov 2023 17:45:09 +0800
+Subject: [PATCH] Subject: [PATCH] add spi rom 256mb (mx66l2g45g) support
+
+Symptom/Reason:
+        Superion-nuv board boot-up fail.
+
+Root Cause:
+        The SPI ROM type is not in the list.
+
+Solution/Change:
+        [spi-nor-ids.c]
+            Add the mx66l2g45g info in the u-boot.
+
+Entry Test:
+        Power up the superion-nuv and check does it can enter the file system.
+---
+ drivers/mtd/spi/spi-nor-ids.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/mtd/spi/spi-nor-ids.c b/drivers/mtd/spi/spi-nor-ids.c
+index 6a4dedc2f6..623c17acc0 100644
+--- a/drivers/mtd/spi/spi-nor-ids.c
++++ b/drivers/mtd/spi/spi-nor-ids.c
+@@ -170,6 +170,7 @@ const struct flash_info spi_nor_ids[] = {
+ 	{ INFO("mx66u51235f", 0xc2253a, 0, 64 * 1024, 1024, SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES) },
+ 	{ INFO("mx66u2g45g",  0xc2253c, 0, 64 * 1024, 4096, SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES) },
+ 	{ INFO("mx66l1g45g",  0xc2201b, 0, 64 * 1024, 2048, SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
++	{ INFO("mx66l2g45g",  0xc2201c, 0, 64 * 1024, 4096, SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES) },
+ 	{ INFO("mx25l1633e", 0xc22415, 0, 64 * 1024,   32, SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES | SECT_4K) },
+ 	{ INFO("mx25r6435f", 0xc22817, 0, 64 * 1024,   128,  SECT_4K) },
+ #endif
+-- 
+2.17.1
+
