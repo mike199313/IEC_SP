@@ -334,6 +334,14 @@
 	};
 };
 
+&wdt1 {
+        status = "okay";
+};
+
+&wdt2 {
+        status = "okay";
+};
+
 &uart1 {
         status = "okay";
 };
