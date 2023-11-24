@@ -1,0 +1,205 @@
+From 55235eae03c396e5782401ccc2fa66793507fde2 Mon Sep 17 00:00:00 2001
+From: "daniel.tsai" <Tsai.Daniel@inventec.com>
+Date: Thu, 9 Nov 2023 07:27:18 +0000
+Subject: [PATCH] update ethernet driver
+
+---
+ drivers/net/ethernet/faraday/ftgmac100.c | 67 ++++++++++++++++++++++--
+ 1 file changed, 62 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/net/ethernet/faraday/ftgmac100.c b/drivers/net/ethernet/faraday/ftgmac100.c
+index c96d4bf4d5e3..642a4346014c 100644
+--- a/drivers/net/ethernet/faraday/ftgmac100.c
++++ b/drivers/net/ethernet/faraday/ftgmac100.c
+@@ -9,6 +9,7 @@
+ #define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt
+ 
+ #include <linux/clk.h>
++#include <linux/reset.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/etherdevice.h>
+ #include <linux/ethtool.h>
+@@ -34,8 +35,8 @@
+ /* Arbitrary values, I am not sure the HW has limits */
+ #define MAX_RX_QUEUE_ENTRIES	1024
+ #define MAX_TX_QUEUE_ENTRIES	1024
+-#define MIN_RX_QUEUE_ENTRIES	32
+-#define MIN_TX_QUEUE_ENTRIES	32
++#define MIN_RX_QUEUE_ENTRIES	64
++#define MIN_TX_QUEUE_ENTRIES	64
+ 
+ /* Defaults */
+ #define DEF_RX_QUEUE_ENTRIES	128
+@@ -88,6 +89,7 @@ struct ftgmac100 {
+ 	struct work_struct reset_task;
+ 	struct mii_bus *mii_bus;
+ 	struct clk *clk;
++	struct reset_control *rst;
+ 
+ 	/* AST2500/AST2600 RMII ref clock gate */
+ 	struct clk *rclk;
+@@ -109,6 +111,7 @@ struct ftgmac100 {
+ 	/* Misc */
+ 	bool need_mac_restart;
+ 	bool is_aspeed;
++	spinlock_t lock;    /* to lock shared memory */
+ };
+ 
+ static int ftgmac100_reset_mac(struct ftgmac100 *priv, u32 maccr)
+@@ -639,13 +642,17 @@ static bool ftgmac100_tx_complete_packet(struct ftgmac100 *priv)
+ 	struct sk_buff *skb;
+ 	unsigned int pointer;
+ 	u32 ctl_stat;
++	unsigned long flags;
+ 
++	spin_lock_irqsave(&priv->lock, flags);
+ 	pointer = priv->tx_clean_pointer;
+ 	txdes = &priv->txdes[pointer];
+ 
+ 	ctl_stat = le32_to_cpu(txdes->txdes0);
+-	if (ctl_stat & FTGMAC100_TXDES0_TXDMA_OWN)
++	if (ctl_stat & FTGMAC100_TXDES0_TXDMA_OWN) {
++		spin_unlock_irqrestore(&priv->lock, flags);
+ 		return false;
++	}
+ 
+ 	skb = priv->tx_skbs[pointer];
+ 	netdev->stats.tx_packets++;
+@@ -659,6 +666,7 @@ static bool ftgmac100_tx_complete_packet(struct ftgmac100 *priv)
+ 	smp_wmb();
+ 
+ 	priv->tx_clean_pointer = ftgmac100_next_tx_pointer(priv, pointer);
++	spin_unlock_irqrestore(&priv->lock, flags);
+ 
+ 	return true;
+ }
+@@ -715,6 +723,7 @@ static netdev_tx_t ftgmac100_hard_start_xmit(struct sk_buff *skb,
+ 	unsigned int pointer, nfrags, len, i, j;
+ 	u32 f_ctl_stat, ctl_stat, csum_vlan;
+ 	dma_addr_t map;
++	unsigned long flags;
+ 
+ 	/* The HW doesn't pad small frames */
+ 	if (eth_skb_pad(skb)) {
+@@ -722,6 +731,7 @@ static netdev_tx_t ftgmac100_hard_start_xmit(struct sk_buff *skb,
+ 		return NETDEV_TX_OK;
+ 	}
+ 
++	spin_lock_irqsave(&priv->lock, flags);
+ 	/* Reject oversize packets */
+ 	if (unlikely(skb->len > MAX_PKT_SIZE)) {
+ 		if (net_ratelimit())
+@@ -831,8 +841,24 @@ static netdev_tx_t ftgmac100_hard_start_xmit(struct sk_buff *skb,
+ 			netif_wake_queue(netdev);
+ 	}
+ 
++	/* When sending UDP packets, we may never receive a packet to activate
++	 * the NAPI BH. And hence we don't have chance to free the TX data.
++	 * The workaround is to enable FTGMAC100_INT_XPKT_ETH, then the NAPI BH
++	 * can be woke up in the ISR.
++	 */
++	if (skb->protocol == (cpu_to_be16(ETH_P_IP)) &&
++	    (ip_hdr(skb)->protocol == IPPROTO_UDP)) {
++		u32 ier = ioread32(priv->base + FTGMAC100_OFFSET_IER);
++
++		/* IER == FTGMAC100_INT_ALL implies NAPI is not running */
++		if (ier == FTGMAC100_INT_ALL)
++			iowrite32(ier | FTGMAC100_INT_XPKT_ETH,
++				  priv->base + FTGMAC100_OFFSET_IER);
++	}
++
+ 	/* Poke transmitter to read the updated TX descriptors */
+ 	iowrite32(1, priv->base + FTGMAC100_OFFSET_NPTXPD);
++	spin_unlock_irqrestore(&priv->lock, flags);
+ 
+ 	return NETDEV_TX_OK;
+ 
+@@ -862,6 +888,7 @@ static netdev_tx_t ftgmac100_hard_start_xmit(struct sk_buff *skb,
+ 	/* Drop the packet */
+ 	dev_kfree_skb_any(skb);
+ 	netdev->stats.tx_dropped++;
++	spin_unlock_irqrestore(&priv->lock, flags);
+ 
+ 	return NETDEV_TX_OK;
+ }
+@@ -1756,6 +1783,19 @@ static int ftgmac100_setup_clk(struct ftgmac100 *priv)
+ 	return rc;
+ }
+ 
++static bool ftgmac100_has_child_node(struct device_node *np, const char *name)
++{
++	struct device_node *child_np = of_get_child_by_name(np, name);
++	bool ret = false;
++
++	if (child_np) {
++		ret = true;
++		of_node_put(child_np);
++	}
++
++	return ret;
++}
++
+ static int ftgmac100_probe(struct platform_device *pdev)
+ {
+ 	struct resource *res;
+@@ -1793,6 +1833,7 @@ static int ftgmac100_probe(struct platform_device *pdev)
+ 	priv->netdev = netdev;
+ 	priv->dev = &pdev->dev;
+ 	INIT_WORK(&priv->reset_task, ftgmac100_reset_task);
++	spin_lock_init(&priv->lock);
+ 
+ 	/* map io memory */
+ 	priv->res = request_mem_region(res->start, resource_size(res),
+@@ -1875,7 +1916,7 @@ static int ftgmac100_probe(struct platform_device *pdev)
+ 
+ 		/* Display what we found */
+ 		phy_attached_info(phy);
+-	} else if (np && !of_get_child_by_name(np, "mdio")) {
++	} else if (np && !ftgmac100_has_child_node(np, "mdio")) {
+ 		/* Support legacy ASPEED devicetree descriptions that decribe a
+ 		 * MAC with an embedded MDIO controller but have no "mdio"
+ 		 * child node. Automatically scan the MDIO bus for available
+@@ -1895,10 +1936,21 @@ static int ftgmac100_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	if (priv->is_aspeed) {
++		struct reset_control *rst;
++
+ 		err = ftgmac100_setup_clk(priv);
+ 		if (err)
+ 			goto err_phy_connect;
+ 
++		rst = devm_reset_control_get_optional(priv->dev, NULL);
++		if (IS_ERR(rst))
++			goto err_register_netdev;
++
++		priv->rst = rst;
++		err = reset_control_assert(priv->rst);
++		mdelay(10);
++		err = reset_control_deassert(priv->rst);
++
+ 		/* Disable ast2600 problematic HW arbitration */
+ 		if (of_device_is_compatible(np, "aspeed,ast2600-mac"))
+ 			iowrite32(FTGMAC100_TM_DEFAULT,
+@@ -1920,6 +1972,11 @@ static int ftgmac100_probe(struct platform_device *pdev)
+ 	/* AST2400  doesn't have working HW checksum generation */
+ 	if (np && (of_device_is_compatible(np, "aspeed,ast2400-mac")))
+ 		netdev->hw_features &= ~NETIF_F_HW_CSUM;
++
++	/* AST2600 tx checksum with NCSI is broken */
++	if (priv->use_ncsi && of_device_is_compatible(np, "aspeed,ast2600-mac"))
++		netdev->hw_features &= ~NETIF_F_HW_CSUM;
++
+ 	if (np && of_get_property(np, "no-hw-checksum", NULL))
+ 		netdev->hw_features &= ~(NETIF_F_HW_CSUM | NETIF_F_RXCSUM);
+ 	netdev->features |= netdev->hw_features;
+@@ -2003,4 +2060,4 @@ module_platform_driver(ftgmac100_driver);
+ 
+ MODULE_AUTHOR("Po-Yu Chuang <ratbert@faraday-tech.com>");
+ MODULE_DESCRIPTION("FTGMAC100 driver");
+-MODULE_LICENSE("GPL");
++MODULE_LICENSE("GPL");
+\ No newline at end of file
+-- 
+2.17.1
+
