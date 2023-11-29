@@ -39,9 +39,9 @@ do_install() {
   install -m 755 ${WORKDIR}/config.json ${D}/usr/share/cpldupdate-i2c/config.json
 }
 
-LDFLAGS += "-lsystemd -lsdbusplus -lobmc-i2c"
-DEPENDS += "libobmc-i2c systemd sdbusplus nlohmann-json"
-RDEPENDS:${PN} += "libobmc-i2c libsystemd sdbusplus"
+LDFLAGS += "-lsystemd -lsdbusplus -lobmc-i2c -lgpiod"
+DEPENDS += "libobmc-i2c systemd sdbusplus nlohmann-json libgpiod"
+RDEPENDS:${PN} += "libobmc-i2c libsystemd sdbusplus libgpiod"
 
 FILES:${PN} = "${bindir}"
 FILES:${PN} += "${datadir}/cpldupdate-i2c/config.json"

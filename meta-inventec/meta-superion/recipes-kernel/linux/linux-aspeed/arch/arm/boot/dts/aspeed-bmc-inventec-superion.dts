@@ -1168,7 +1168,7 @@
 	/*S0-S7*/   "","","BMC_WAKE","","","","","",
 	/*T0-T7*/   "CPU_MCERR","","","","","","","",
 	/*U0-U7*/   "","","","CPU_ERR0","","CPU_ERR1","","CPU_ERR2",
-	/*V0-V7*/   "RST_BMC_SGPIO","","","CPU_CATERR","","","","",
+	/*V0-V7*/   "RST_BMC_SGPIO","","","CPU_CATERR","","","","GPIO_MLB_CPLD_HITLESS_N",
 	/*W0-W7*/   "","","","","","","","",
 	/*X0-X7*/   "","","","","","","","CPU0_BMCINIT",
 	/*Y0-Y7*/   "","","","","","","","CPLD_PWRBRK",
