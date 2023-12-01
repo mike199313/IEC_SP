@@ -16,6 +16,12 @@ function post_complete_rebind() {
     echo Rebind peci driver
     echo 0-30 > /sys/bus/peci/drivers/intel_peci_client/unbind
     echo 0-30 > /sys/bus/peci/drivers/intel_peci_client/bind
+
+    # Rebind OCP network driver
+    echo Rebind OCP network driver
+    echo 1e670000.ftgmac > /sys/bus/platform/drivers/ftgmac100/unbind
+    echo 1e670000.ftgmac > /sys/bus/platform/drivers/ftgmac100/bind
+
     systemctl restart xyz.openbmc_project.cpusensor.service
 }
 
