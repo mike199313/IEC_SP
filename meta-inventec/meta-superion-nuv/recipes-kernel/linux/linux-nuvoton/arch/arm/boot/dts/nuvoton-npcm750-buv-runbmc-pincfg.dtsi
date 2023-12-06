@@ -80,7 +80,7 @@
 		gpio137o_pins: gpio137o-pins {
 			pins = "GPIO137/SD1DT1";
 			bias-disable;
-			output-high;
+			output-low;
 		};
 		gpio25o_pins: gpio25o-pins {
 			pins = "GPIO25/HGPIO5/IOXHDI";
