@@ -1,0 +1,36 @@
+From 44ef720cd5e8f9c2bdd4e3f4ffbf742f96eccc4a Mon Sep 17 00:00:00 2001
+From: "daniel.tsai" <Tsai.Daniel@inventec.com>
+Date: Fri, 15 Dec 2023 16:39:50 +0000
+Subject: [PATCH] Add-U-boot-tree-for-superion-dvt
+
+---
+ arch/arm/dts/Makefile              | 2 +-
+ configs/superion-ast2600_defconfig | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index 94d724c12c..61306fc8f8 100755
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -692,7 +692,7 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+ 	ast2600-tacoma.dtb \
+ 	ast2600-intel.dtb \
+ 	ast2600-tacoma.dtb \
+-	ast2600-superion.dtb
++	ast2600-superion-dvt.dtb
+ 
+ dtb-$(CONFIG_ARCH_STI) += stih410-b2260.dtb
+ 
+diff --git a/configs/superion-ast2600_defconfig b/configs/superion-ast2600_defconfig
+index 3fc0a0faa0..ba0e22b482 100644
+--- a/configs/superion-ast2600_defconfig
++++ b/configs/superion-ast2600_defconfig
+@@ -8,7 +8,7 @@ CONFIG_ENV_SIZE=0x20000
+ CONFIG_ENV_OFFSET=0xE0000
+ CONFIG_ARMV7_BOOT_SEC_DEFAULT=y
+ CONFIG_CMD_EEPROM=y
+-CONFIG_DEFAULT_DEVICE_TREE="ast2600-superion"
++CONFIG_DEFAULT_DEVICE_TREE="ast2600-superion-dvt"
+ CONFIG_NR_DRAM_BANKS=1
+ CONFIG_FIT=y
+ CONFIG_USE_BOOTARGS=y
