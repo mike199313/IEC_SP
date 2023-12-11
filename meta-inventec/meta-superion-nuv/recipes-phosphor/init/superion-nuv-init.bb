@@ -13,7 +13,6 @@ RDEPENDS:${PN} += "libsystemd"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/superion-nuv-init:"
 SRC_URI += "file://superion-nuv-init.sh \
-            file://superion-nuv-fan-init.sh \
             file://superion-nuv-gpio-init.sh \
             file://superion-nuv-cpld-init.sh \
             "
@@ -23,7 +22,6 @@ S = "${WORKDIR}"
 do_install() {
         install -d ${D}${sbindir}
         install -m 0755 superion-nuv-init.sh ${D}${sbindir}
-        install -m 0755 superion-nuv-fan-init.sh ${D}${sbindir}
         install -m 0755 superion-nuv-gpio-init.sh ${D}${sbindir}
         install -m 0755 superion-nuv-cpld-init.sh ${D}${sbindir}
 }
