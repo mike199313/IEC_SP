@@ -1,22 +1,21 @@
 #!/bin/bash
 
 # espi vGPIO FM_BIOS_POST_CMPLT_N wil pull low after BIOS on.
-# Rebind the peci driver after FM_BIOS_POST_CMPLT_N pull low to probe successfully.
+# Rebind the OCP network driver after FM_BIOS_POST_CMPLT_N pull low to probe successfully.
 VALUE_HIGH=0x1
 VALUE_LOW=0x0
 FIRST_PULSE_MAX_LOOP_TIME=60 # unit: second
-SECOND_PULSE_MAX_LOOP_TIME=300 # unit: second
+SECOND_PULSE_MAX_LOOP_TIME=1800 # unit: second
 vGPIO_INIT_DIRECTION=0xf
 vGPIO_BASE_ADDR=0x1E6EE0C0
 ERROR_OK=0
 ERROR_NG=-1
 
 function post_complete_rebind() {
-    # rebind peci driver
-    echo Rebind peci driver
-    echo 0-30 > /sys/bus/peci/drivers/intel_peci_client/unbind
-    echo 0-30 > /sys/bus/peci/drivers/intel_peci_client/bind
-    systemctl restart xyz.openbmc_project.cpusensor.service
+    # Rebind OCP network driver
+    echo Rebind OCP network driver
+    echo 1e670000.ftgmac > /sys/bus/platform/drivers/ftgmac100/unbind
+    echo 1e670000.ftgmac > /sys/bus/platform/drivers/ftgmac100/bind
 }
 
 function show_log() {
