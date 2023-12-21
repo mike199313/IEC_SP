@@ -1,4 +1,4 @@
-FILESEXTRAPATHS:append:superion := "${THISDIR}/${PN}:"
+FILESEXTRAPATHS:append:${MACHINE} := "${THISDIR}/${PN}:"
 
 FILES:${PN}:append = " ${datadir}/cpldupdate-i2c/config.json"
 

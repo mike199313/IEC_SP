@@ -1,6 +1,6 @@
-FILESEXTRAPATHS:prepend:superion := "${THISDIR}/${PN}:"
+FILESEXTRAPATHS:prepend:${MACHINE} := "${THISDIR}/${PN}:"
 
-SRC_URI:append:superion = " \
+SRC_URI:append:${MACHINE} = " \
   file://motherboard.json \
   file://blacklist.json \
   file://runbmc.json \
@@ -11,7 +11,7 @@ SRC_URI:append:superion = " \
   file://artesyn_csu2400ap-3-100_psu2.json \
 "
 
-do_install:append:superion() {
+do_install:append:${MACHINE} () {
   install -d 0755 ${D}${datadir}/${PN}/configurations/
   rm -v -f ${D}${datadir}/${PN}/configurations/*.json
   install -m 0644 ${WORKDIR}/motherboard.json ${D}${datadir}/${PN}/configurations
