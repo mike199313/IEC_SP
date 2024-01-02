@@ -29,6 +29,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <openbmc/obmc-i2c.h>
+#include <gpiod.hpp>
 #include <sdbusplus/server.hpp>
 #include <variant>
 #include <tuple>
@@ -41,7 +42,7 @@
 #ifdef DEBUG
 #define CPLD_DEBUG(fmt, args...) printf(fmt, ##args);
 #else
-#define CPLD_DEBUG(fmt, args...)
+#define CPLD_DEBUG(fmt, args...) 
 #endif
 
 #define ERR_PRINT(fmt, args...) \
@@ -56,6 +57,23 @@
 
 const int VERIFY_PERCENTAGE = 40;
 const int FLASH_PERCENTAGE = 40;
+const int CPLD_HPM_BUS = 12;
+const int CPLD_SCM_BUS = 9;
+const int CPLD_INFO_REG = 0x37;
+const uint8_t CPLD_BOARD_TYPE_HPM = 0x01;
+const uint8_t CPLD_BOARD_TYPE_SCM = 0x10;
+const int CPLD_BOARD_TYPE_OFFSET = 0x0;
+const int CPLD_FW_VERSION_OFFSET = 0x2;
+const int I2CTOOL_FORCE_FLAG = 1;
+const int GET_BOARDTYPE_RETRY_TIMES = 15;
+const int SLEEP_TIME = 2;
+const int CPLD_HITLESS_ENABLE_FW_VERSION = 0x06;
+
+static constexpr const char* strGpiochip = "gpiochip0";  
+static constexpr unsigned int GPIO_MLB_CPLD_HITLESS_N = 175; 
+
+std::string cpld_type;
+bool is_hitless_enable = false; // true for enable
 
 using GetSubTreeType = std::vector<std::pair<
                        std::string,
@@ -488,7 +506,7 @@ refresh(i2c_info_t cpld)
         ERR_PRINT("\nrefresh()");
         return ret;
     }
-    sleep(1);
+    sleep(SLEEP_TIME);
     printf("Done\n");
     return 0;
 }
@@ -791,12 +809,100 @@ static int program_done_process(i2c_info_t cpld)
     return 0;
 }
 
+static int
+read_board_type(i2c_info_t cpld_fw_info)
+{
+    uint8_t board_type_cmd[1] = {CPLD_BOARD_TYPE_OFFSET} ;
+    uint8_t board_type[1];
+    int ret = -1;
+    ret = i2c_rdwr_msg_transfer_retry(cpld_fw_info.fd, cpld_fw_info.addr<<1, board_type_cmd,
+                    sizeof(board_type_cmd),board_type,sizeof(board_type));
+    sleep(SLEEP_TIME);
+    if (ret != 0) {
+        ERR_PRINT("read_board_type()");
+        return ret;
+    }
+    return board_type[0];
+}
+
+static int
+read_board_type_retry(i2c_info_t cpld_fw_info, int retry_times)
+{
+    bool is_get_boardtype=false;
+    int ret=-1 , count=0 ;
+    uint8_t target_board_type=0x0 ;
+    
+    if(cpld_type == "MB")
+    {
+	target_board_type = CPLD_BOARD_TYPE_HPM;
+    }
+    else if(cpld_type == "SCM")
+    {
+	target_board_type = CPLD_BOARD_TYPE_SCM;
+    }
+
+    while ( is_get_boardtype == false && count < retry_times)
+    {
+        if(read_board_type(cpld_fw_info) == target_board_type)
+        {
+            is_get_boardtype = true;
+	    CPLD_DEBUG("%s: board_type 0x%x\n",__func__,CPLD_BOARD_TYPE_HPM);
+        }
+        count++;
+	CPLD_DEBUG("%s : count %d\n",__func__,count);
+	sleep(SLEEP_TIME);
+    }
+
+    if(is_get_boardtype == true)
+    {
+	CPLD_DEBUG("%s get board type with retrytimes: %d\n",__func__,count);
+	return 0;
+    }
+    else
+    {
+	printf("%s Can't get board type with retrytimes: %d\n",__func__,count);
+	return -1;
+    }
+}
+
+static int
+read_fw_version(i2c_info_t cpld_fw_info)
+{
+    uint8_t fw_version_cmd[1] = {CPLD_FW_VERSION_OFFSET} ;
+    uint8_t fw_version[1];
+    int ret = -1;
+    ret = i2c_rdwr_msg_transfer_retry(cpld_fw_info.fd, cpld_fw_info.addr<<1, fw_version_cmd,
+                    sizeof(fw_version_cmd),fw_version,sizeof(fw_version));
+    sleep(SLEEP_TIME);
+    if (ret != 0) {
+        ERR_PRINT("read_fw_version()");
+        return ret;
+    }
+    return fw_version[0];
+}
+
+static void cpld_hitless_enable(bool en)
+{
+    int val = 0;
+    printf("%s %d\n", __func__, en);
+
+    val = ((en == true) ? 1 : 0);
+    gpiod_ctxless_set_value(strGpiochip,          // Label of the gpiochip.
+                            GPIO_MLB_CPLD_HITLESS_N,     // Number of GPIO pin.
+                            val,                    // GPIO set value.
+                            false,                // The active state of this line - true if low.
+                            "cpld-update",       // Name of comsumer.
+                            NULL,                 // Callback function.
+                            NULL);                // value passed to callback function.
+    sleep(SLEEP_TIME);
+}
+
 int
 main(int argc, const char *argv[])
 {
-    bool is_remote = false;
-    int cfg_len = 0, ufm_len = 0, pid_file = 0;
-    i2c_info_t cpld;
+    bool is_remote = false ;
+    int cfg_len = 0, ufm_len = 0, pid_file = 0, ret=0, count=0;
+    i2c_info_t cpld , cpld_fw_info;
     cpld_config_t cpld_config;
     u_int8_t *cfg_data;
     u_int8_t *ufm_data;
@@ -829,13 +935,13 @@ main(int argc, const char *argv[])
         return 0;
     }
 
-#if STOP_FRU_SERVICE == true
+    #if STOP_FRU_SERVICE == true
     //stop scan the fru device service, it will cause i2c error
     method = bus.new_method_call(SYSTEMD_SERVICE, SYSTEMD_ROOT,
         SYSTEMD_INTERFACE, "StopUnit");
     method.append(FRU_SERVICE, "replace");
     bus.call(method);
-#endif
+    #endif
 
     bus.release();
     bus.close();
@@ -852,7 +958,6 @@ main(int argc, const char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    int count=0;
     int size = strlen(argv[1]) + 1;
     image_path=(char*)malloc(size);
     memcpy(image_path, argv[1], size);
@@ -865,11 +970,56 @@ main(int argc, const char *argv[])
         }
         std::string type = get_cpld_type(image_path, json_data);
 	    if(type == ""){
-            std::cerr << "UNKNOWN_CPLD_TYPE\n";
-            return 0;
+                std::cerr << "UNKNOWN_CPLD_TYPE\n";
+                return 0;
 	    }
-
-	    cpld.bus = json_data[type]["bus"].get<unsigned long>();
+	    else{
+                cpld_type=type;
+		printf(" cpld type : %s\n",cpld_type.c_str());
+	    }
+	cpld_fw_info.addr = CPLD_INFO_REG; // HPM & SCM use same address to save cpld info
+        // check MB(HPM) cpld fw version to decide hitless function enable or not
+        cpld_fw_info.bus = CPLD_HPM_BUS; // it is temp setting for read HPM fw version
+	// open MB(HPM) cpld file to read FW version
+        cpld_fw_info.fd = i2c_open(cpld_fw_info.bus, cpld_fw_info.addr);
+        if (cpld_fw_info.fd < 0)
+        {
+            printf("cpld dev open fail\n");
+            return cpld_fw_info.fd;
+        }
+        ret=read_fw_version(cpld_fw_info);
+        printf("Check HPM FW Version now : 0x%x\n",ret);
+        if(ret < 0)
+        {
+            printf("Can't read cpld fw version, stop upgrade\n");
+            return 0;
+        }
+        else if(ret >= CPLD_HITLESS_ENABLE_FW_VERSION)
+        {
+            is_hitless_enable = true;
+	    printf("hitless function enable\n");
+        }
+	else
+	{
+            is_hitless_enable = false;
+	    printf("hitless function disable\n");
+	}
+        close(cpld_fw_info.fd);
+	// assign target cpld_fw_info i2c bus
+        if(cpld_type == "MB")
+	{
+	    cpld_fw_info.bus = CPLD_HPM_BUS;
+	}
+	else if(cpld_type == "SCM")
+	{
+	    cpld_fw_info.bus = CPLD_SCM_BUS;
+	}
+	else
+	{
+	    std::cerr<< "UNKNOWN_CPLD_TYPE\n";
+	    return 0;
+	}
+	cpld.bus = json_data[type]["bus"].get<unsigned long>();
         char* tempToUnLong;
         cpld.addr = strtoul((json_data[type]["addr"].get<std::string>()).c_str(), &tempToUnLong, 16);
         if(json_data[type]["type"] == "MachXO3D"){
@@ -888,11 +1038,15 @@ main(int argc, const char *argv[])
         printf("cpld dev open fail\n");
         return cpld.fd;
     }
-
+    cpld_fw_info.fd = i2c_open(cpld_fw_info.bus, cpld_fw_info.addr);
+    if (cpld_fw_info.fd < 0){
+        printf("cpld dev open fail\n");
+	return cpld_fw_info.fd;
+    }
     if (is_remote) {
        /*when file path fed in by systemd service, need to replace '-' with '/'
        until the slash  after version-id: ex: -tmp-images-123456-image_name */
-       printf("filepath check\n", argv[1]);
+       printf("filepath check %s\n", argv[1]);
        for(int i = 0; image_path[i] !='\0'; i++) {
 	       if(image_path[i]=='-') {
 	           image_path[i]='/';
@@ -931,10 +1085,11 @@ main(int argc, const char *argv[])
     if((rc = read_device_id(cpld)) !=0) {
         CPLD_DEBUG("failed to read device id\n");
         return -1;
-    } else {
+    } 
+    else {
         CPLD_DEBUG("cpld update succeed\n");
     }
-
+    
     if((rc = enable_program_mode(cpld, TRANSPARENT_MODE)) != 0) {
         CPLD_DEBUG("failed to enable program mode\n");
         return -1;
@@ -967,8 +1122,8 @@ main(int argc, const char *argv[])
             continue;
         }else{
             CPLD_DEBUG("verify succeed\n");
-        }
-
+	}
+        
         if((rc = program_done_process(cpld)) != 0) {
             printf("Program_done_progress failed\n");
             continue;
@@ -988,7 +1143,31 @@ main(int argc, const char *argv[])
         disable_config(cpld);
         return -1;
     }
-
+    
+    //hitless with refresh mechanism {
+    if(is_hitless_enable)
+    {
+        printf("hitless is enable\n");
+	cpld_hitless_enable(true);
+        refresh(cpld);
+        //keep polling cpld reg until get board type , it means
+        //cpld already power up
+        ret = read_board_type_retry(cpld_fw_info,GET_BOARDTYPE_RETRY_TIMES);
+        if(ret == 0)
+        {
+            printf("Get board type OK\n");
+        }
+        else
+        {
+	    printf("Can't get board type, update may fail\n");
+        }
+        cpld_hitless_enable(false);
+    }
+    else
+    {
+        printf("hitless is disable\n");
+        refresh(cpld);
+    }
     if(is_remote) {
         bus = sdbusplus::bus::new_default();
         method = bus.new_method_call(service.c_str(), object.c_str() ,PROP_INTF, "Set");
@@ -1001,13 +1180,15 @@ main(int argc, const char *argv[])
             printf("error: sdbus %s\n", e.what());
         }
     }
-    sleep(2);
+    sleep(SLEEP_TIME);
     close(cpld.fd);
+    close(cpld_fw_info.fd);
     free(cfg_data);
     if (0 != ufm_len) {
         free(ufm_data);
     }
     free(image_path);
-    printf("cpld update done, ready to refresh...\n");
+    printf("cpld update done\n");
     return 0;
 }
+

@@ -5,7 +5,7 @@ CC      ?= $(CROSS_COMPILE)g++
 CFLAGS += -std=c++17
 CFLAGS += $(shell pkg-config --cflags $(DEPPKG))
 LIBS += $(shell pkg-config --libs $(LIBPKGS))
-LIBS += -lsystemd -lsdbusplus -lobmc-i2c
+LIBS += -lsystemd -lsdbusplus -lobmc-i2c -lgpiod
 
 all: $(EXE)
 $(EXE): $(CFILE)
