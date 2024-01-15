@@ -1,0 +1,128 @@
+From c08e083b215dca24b28f0f3c9965d58b9204a142 Mon Sep 17 00:00:00 2001
+From: "jimmy.chen" <Chen.JimmyHC@inventec.com>
+Date: Fri, 12 Jan 2024 06:28:54 +0000
+Subject: [PATCH] Subject: [PATCH] modify SPI config for pfr layout.
+
+Symptom/Reason:
+        - We need to shift kernel start address to 0x81520000 for pfr layout config.
+        But Nuvton uboot set SPI address default to 3 bytes mode.
+        It will cause kernel data can't be written into memory.
+
+Root Cause:
+        - SPI address is default 3 bytes mode.
+
+Solution/Change:
+        [poleg.c]
+            modify SPI0 settings with register 0xFB000000:
+            - modify RDCMD to support fast read 4 byte command with bit0~7 : 0xC
+            - enable 4 bytes mode at bit[16]
+        [poleg.h]
+            modify bootm start address from 0x80200000 to 0x81520000
+
+Entry Test:
+        Boot up without "sf read" manually and "bootm" command
+        ----------------------------------------------------------------
+        Step1: AC-on
+        Step2: check uimage address:
+        Step3: check cpld state to 0xa9
+        Step4: check post code with 170: boot into OS (ubuntu)
+        ----------------------------------------------------------------
+        Log:
+        (AC-on)
+        >================================================
+
+        > BootBlock by Nuvoton Technology Corp. Ver 10.10.17
+
+        >================================================
+        ...
+        Hit any key to stop autoboot:  0
+        Booting Kernel from flash
+        +++ uimage at 0x81520000
+        Using bootargs: earlycon=uart8250,mmio32,0xf0001000 root=/dev/ram console=ttyS0,115200n8 mem=976M ramdisk_size=48000 basemac=00:00:F7:A0:00:FC oops=panic panic=20 quiet
+        ## Loading kernel from FIT Image at 81520000 ...
+        ...
+        root@superion-nuv:~# i2cget -y -f 12 0x37 0x07
+        0xa9
+        ...
+        root@superion-nuv:~# busctl introspect xyz.openbmc_project.State.Boot.Raw /xyz/openbmc_project/state/boot/raw0\
+        NAME                                TYPE      SIGNATURE  RESULT/VALUE  FLAGS
+        org.freedesktop.DBus.Introspectable interface -          -             -
+        .Introspect                         method    -          s             -
+        org.freedesktop.DBus.ObjectManager  interface -          -             -
+        .GetManagedObjects                  method    -          a{oa{sa{sv}}} -
+        .InterfacesAdded                    signal    oa{sa{sv}} -             -
+        .InterfacesRemoved                  signal    oas        -             -
+        org.freedesktop.DBus.Peer           interface -          -             -
+        .GetMachineId                       method    -          s             -
+        .Ping                               method    -          -             -
+        org.freedesktop.DBus.Properties     interface -          -             -
+        .Get                                method    ss         v             -
+        .GetAll                             method    s          a{sv}         -
+        .Set                                method    ssv        -             -
+        .PropertiesChanged                  signal    sa{sv}as   -             -
+        xyz.openbmc_project.State.Boot.Raw  interface -          -             -
+        .Value                              property  (tay)      170 0         emits-change writable
+        root@superion-nuv:~#
+---
+ board/nuvoton/poleg/poleg.c | 24 ++++++++++++++++++++++++
+ include/configs/poleg.h     |  2 +-
+ 2 files changed, 25 insertions(+), 1 deletion(-)
+
+diff --git a/board/nuvoton/poleg/poleg.c b/board/nuvoton/poleg/poleg.c
+index 08a85a869e..01281621aa 100644
+--- a/board/nuvoton/poleg/poleg.c
++++ b/board/nuvoton/poleg/poleg.c
+@@ -24,6 +24,29 @@
+ 
+ DECLARE_GLOBAL_DATA_PTR;
+ 
++/* Core Register Map for FIU  */
++#define NPCM_SPI0_BA 0xfb000000
++#define FIU_DRD_CFG_OFFSET 0x0
++
++/* FIU Direct Read Configuration Register */
++#define BIT_ADDSIZ (BIT(16)) // Control SPI address 3 bytes mode <-> 4 bytes mode , default 0 for 3 bytes mode
++
++// Controls the value of the SPI command byte , 0xC for support fast read 4 byte command
++#define RDCMD_CFG_INIT 0xFFFFFF00 // Use operator "and" to keep bit 8-31 value and clean bit 0-7
++#define RDCMD_CFG_BIT2 (BIT(2)) 
++#define RDCMD_CFG_BIT3 (BIT(3))
++
++static void poleg_spi_init(void)
++{
++	u32 reg;
++	reg = readl(NPCM_SPI0_BA + FIU_DRD_CFG_OFFSET );
++	reg &= RDCMD_CFG_INIT;
++	reg |= RDCMD_CFG_BIT2 | RDCMD_CFG_BIT3 ;
++	reg |= BIT_ADDSIZ;
++	writel(reg, NPCM_SPI0_BA + FIU_DRD_CFG_OFFSET );
++}
++
++
+ static void poleg_gfx_init(void)
+ {
+ 	struct npcm_gcr *gcr = (struct npcm_gcr *)npcm_get_base_gcr();
+@@ -81,6 +104,7 @@ static void poleg_uart_init(void)
+ 
+ int board_init(void)
+ {
++	poleg_spi_init();
+ 	poleg_gfx_init();
+ 	poleg_espi_init();
+ 	poleg_uart_init();
+diff --git a/include/configs/poleg.h b/include/configs/poleg.h
+index 62f260e8bf..0ffba28922 100644
+--- a/include/configs/poleg.h
++++ b/include/configs/poleg.h
+@@ -61,7 +61,7 @@
+ #define CONFIG_SERVERIP                 192.168.0.1
+ #define CONFIG_IPADDR                   192.168.0.2
+ #define CONFIG_NETMASK                  255.255.255.0
+-#define CONFIG_EXTRA_ENV_SETTINGS   "uimage_flash_addr=80200000\0"   \
++#define CONFIG_EXTRA_ENV_SETTINGS   "uimage_flash_addr=81520000\0"   \
+ 		"stdin=serial\0"   \
+ 		"stdout=serial\0"   \
+ 		"stderr=serial\0"    \
+-- 
+2.17.1
+
