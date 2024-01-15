@@ -9,6 +9,7 @@ SRC_URI:append:superion-nuv =     " file://fixed_phy.cfg \
                                     file://0004-Add-Windbond-W25Q512JVFIM.patch \
                                     file://0005-Add-update-mac-address-info.patch \
                                     file://0006-Add-rom-mx66l2g45g.patch \
+                                    file://0007-modify-SPI-config-for-pfr-layout.patch \
                                     "
 include conf/machine/platform_configs.inc
 
