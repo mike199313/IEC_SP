@@ -130,26 +130,6 @@
        }
    },
    {
-       "Name": "ASSERT_CPU0_PROCHOT",
-       "LineName": "ASSERT_CPU0_PROCHOT",
-       "EventMon": "BOTH",
-       "Continue": true,
-       "Target": {
-           "FALLING":["gpio-event-handler@ASSERT_CPU0_PROCHOT_ASSERTED.service"],
-           "RISING": ["gpio-event-handler@ASSERT_CPU0_PROCHOT_DEASSERTED.service"]
-       }
-   },
-   {
-       "Name": "ASSERT_CPU1_PROCHOT",
-       "LineName": "ASSERT_CPU1_PROCHOT",
-       "EventMon": "BOTH",
-       "Continue": true,
-       "Target": {
-           "FALLING":["gpio-event-handler@ASSERT_CPU1_PROCHOT_ASSERTED.service"],
-           "RISING": ["gpio-event-handler@ASSERT_CPU1_PROCHOT_DEASSERTED.service"]
-       }
-   },
-   {
        "Name": "CPU0_PROCHOT_CPLD",
        "LineName": "CPU0_PROCHOT_CPLD",
        "EventMon": "BOTH",
