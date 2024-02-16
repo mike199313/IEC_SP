@@ -92,7 +92,7 @@
         }
     ],
     "Name": "bp0",
-    "Probe": "xyz.openbmc_project.FruDevice({'BUS': 16, 'ADDRESS': 81})",
+    "Probe": "xyz.openbmc_project.FruDevice({'BUS': 20, 'ADDRESS': 81})",
     "Type": "Board",
     "xyz.openbmc_project.Inventory.Decorator.Asset": {
         "Manufacturer": "$BOARD_MANUFACTURER",
