@@ -17,6 +17,7 @@ SRC_URI:append = " file://superion.cfg \
                    file://0013-add-espi-flash-channel-support.patch \
                    file://0014-kernel-driver-update-for-CPU-SRF-SP.patch \
                    file://0015-Implement-a-memory-driver-share-memory.patch \
+                   file://0016-Update-i2c-drivers-for-superion-i2c-timing-issue.patch \
                    file://9999-update-ethernet-driver.patch \
                  "
 
