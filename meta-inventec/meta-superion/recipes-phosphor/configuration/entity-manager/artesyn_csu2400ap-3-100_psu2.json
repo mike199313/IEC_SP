@@ -324,7 +324,7 @@
         }
     ],
     "Name": "PSU2",
-    "Probe": "xyz.openbmc_project.FruDevice({'BUS': 31, 'ADDRESS': 82})",
+    "Probe": "xyz.openbmc_project.FruDevice({'BUS': 27, 'ADDRESS': 82})",
     "Type": "Product",
     "xyz.openbmc_project.Inventory.Decorator.Asset": {
         "Manufacturer": "$PRODUCT_MANUFACTURER",
